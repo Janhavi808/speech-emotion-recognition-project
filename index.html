@@ -1,0 +1,671 @@
+<<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Speech Emotion Recognition</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        :root {
+            --primary: #4361ee;
+            --secondary: #3f37c9;
+            --accent: #4895ef;
+            --success: #4cc9f0;
+            --danger: #f72585;
+            --warning: #f8961e;
+            --info: #43aa8b;
+            --light: #f8f9fa;
+            --dark: #212529;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        
+        h1 {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .status {
+            padding: 8px 15px;
+            background-color: #e9ecef;
+            border-radius: 20px;
+            font-size: 14px;
+            color: #6c757d;
+        }
+        
+        .status.recording {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+        
+        .status.analyzing {
+            background-color: #cce5ff;
+            color: #004085;
+        }
+        
+        .main-content {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 30px;
+        }
+        
+        .visualization {
+            background-color: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+        
+        .result-display {
+            margin-top: 20px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .result-label {
+            font-size: 18px;
+            font-weight: 500;
+        }
+        
+        .result-value {
+            font-size: 24px;
+            font-weight: 600;
+            margin-left: 10px;
+            color: var(--primary);
+        }
+        
+        .controls {
+            background-color: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+        
+        .btn {
+            display: inline-block;
+            padding: 12px 20px;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            text-align: center;
+            width: 100%;
+            margin-bottom: 15px;
+            transition: all 0.3s ease;
+        }
+        
+        .btn:hover {
+            background-color: var(--secondary);
+            transform: translateY(-2px);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .btn-secondary {
+            background-color: #6c757d;
+        }
+        
+        .btn-secondary:hover {
+            background-color: #5a6268;
+        }
+        
+        .btn-record {
+            background-color: var(--danger);
+        }
+        
+        .btn-record:hover {
+            background-color: #d91a5f;
+        }
+        
+        .btn-stop {
+            background-color: var(--success);
+            display: none;
+        }
+        
+        .btn-stop:hover {
+            background-color: #3db5d8;
+        }
+        
+        .history {
+            margin-top: 20px;
+        }
+        
+        .history h3 {
+            margin-bottom: 10px;
+            color: var(--dark);
+        }
+        
+        .history-list {
+            list-style: none;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .history-item {
+            padding: 10px 15px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .history-item:last-child {
+            border-bottom: none;
+        }
+        
+        .emotion-tag {
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: 500;
+            color: white;
+        }
+        
+        .happy { background-color: var(--success); }
+        .sad { background-color: var(--accent); }
+        .angry { background-color: var(--danger); }
+        .neutral { background-color: var(--info); }
+        .fear { background-color: #7209b7; }
+        .disgust { background-color: #4361ee; }
+        
+        footer {
+            margin-top: 40px;
+            text-align: center;
+            color: #6c757d;
+            font-size: 14px;
+        }
+        
+        .waveform-container {
+            height: 200px;
+            margin-bottom: 20px;
+        }
+        
+        .chart-container {
+            height: 300px;
+            margin-top: 20px;
+        }
+        
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.4);
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 15% auto;
+            padding: 20px;
+            border-radius: 10px;
+            width: 80%;
+            max-width: 500px;
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close:hover {
+            color: black;
+        }
+    </style>
+</head>
+<body>
+  <div class="sound-indicator">
+    <div class="sound-level" id="sound-level"></div>
+    <div class="threshold-indicator" id="threshold-indicator"></div>
+</div>
+
+    <div class="container">
+        <header>
+            <h1>Speech Emotion Recognition</h1>
+            <div class="status" id="status">Ready</div>
+        </header>
+        
+        <div class="main-content">
+            <div class="visualization">
+                <div class="waveform-container">
+                    <canvas id="waveform"></canvas>
+                </div>
+                <div class="result-display">
+                    <div class="result-label">Detected Emotion:</div>
+                    <div class="result-value" id="emotion-result">None</div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="emotion-chart"></canvas>
+                </div>
+            </div>
+            
+            <div class="controls">
+                <button class="btn btn-record" id="record-btn">🎤 Start Recording</button>
+                <button class="btn btn-stop" id="stop-btn">⏹ Stop Recording</button>
+                <button class="btn btn-secondary" id="upload-btn">📁 Upload Audio File</button>
+                <button class="btn btn-secondary" id="playback-btn" disabled>▶ Play Recording</button>
+                <input type="file" id="file-input" accept=".wav,.mp3,.ogg" style="display: none;">
+                
+                <div class="history">
+                    <h3>Analysis History</h3>
+                    <ul class="history-list" id="history-list">
+                        <!-- History items will be added here -->
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <footer>
+            <p>Speech Emotion Recognition System &copy; <span id="year"></span> | Powered by Deep Learning</p>
+        </footer>
+    </div>
+
+    <!-- Modal for messages -->
+    <div id="messageModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <p id="modalMessage"></p>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const recordBtn = document.getElementById('record-btn');
+        const stopBtn = document.getElementById('stop-btn');
+        const uploadBtn = document.getElementById('upload-btn');
+        const playbackBtn = document.getElementById('playback-btn');
+        const fileInput = document.getElementById('file-input');
+        const statusIndicator = document.getElementById('status');
+        const emotionResult = document.getElementById('emotion-result');
+        const historyList = document.getElementById('history-list');
+        const modal = document.getElementById('messageModal');
+        const modalMessage = document.getElementById('modalMessage');
+        const closeModal = document.querySelector('.close');
+        
+        // Set current year in footer
+        document.getElementById('year').textContent = new Date().getFullYear();
+
+        // Audio context and variables
+        let audioContext;
+        let mediaRecorder;
+        let audioChunks = [];
+        let recordedAudio;
+        let audioStream;
+        let audioAnalyser;
+        let waveformData = [];
+        let animationId;
+        
+        // Emotion chart
+        const emotionChart = new Chart(
+            document.getElementById('emotion-chart'),
+            {
+                type: 'bar',
+                data: {
+                    labels: ['Angry', 'Disgust', 'Fear', 'Happy', 'Neutral', 'Sad'],
+                    datasets: [{
+                        label: 'Confidence Level',
+                        data: [0, 0, 0, 0, 0, 0],
+                        backgroundColor: [
+                            '#f72585', '#4361ee', '#7209b7', '#4cc9f0', '#43aa8b', '#4895ef'
+                        ],
+                        borderColor: [
+                            '#d91a5f', '#3f37c9', '#560bad', '#3db5d8', '#3a8a6f', '#3a7ca5'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100
+                        }
+                    }
+                }
+            }
+        );
+        
+        // Waveform visualization
+        const waveformCtx = document.getElementById('waveform').getContext('2d');
+        let waveformChart = new Chart(waveformCtx, {
+            type: 'line',
+            data: {
+                datasets: [{
+                    label: 'Audio Waveform',
+                    borderColor: '#4361ee',
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    data: []
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        display: false
+                    },
+                    y: {
+                        display: false
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+
+        // Modal functionality
+        closeModal.onclick = function() {
+            modal.style.display = "none";
+        }
+
+        window.onclick = function(event) {
+            if (event.target == modal) {
+                modal.style.display = "none";
+            }
+        }
+
+        function showMessage(message) {
+            modalMessage.textContent = message;
+            modal.style.display = "block";
+        }
+
+        // Initialize audio context on user interaction
+        function initAudioContext() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        // Start recording
+        recordBtn.addEventListener('click', async () => {
+            try {
+                initAudioContext();
+                audioChunks = [];
+                statusIndicator.textContent = "Recording...";
+                statusIndicator.className = "status recording";
+                recordBtn.style.display = "none";
+                stopBtn.style.display = "block";
+                
+                audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(audioStream);
+                
+                // Setup audio analyser for waveform visualization
+                audioAnalyser = audioContext.createAnalyser();
+                const source = audioContext.createMediaStreamSource(audioStream);
+                source.connect(audioAnalyser);
+                audioAnalyser.fftSize = 2048;
+                const bufferLength = audioAnalyser.frequencyBinCount;
+                const dataArray = new Uint8Array(bufferLength);
+                
+                // Start visualizing waveform
+                function visualizeWaveform() {
+                    animationId = requestAnimationFrame(visualizeWaveform);
+                    audioAnalyser.getByteTimeDomainData(dataArray);
+                    
+                    waveformData = [];
+                    for (let i = 0; i < bufferLength; i++) {
+                        waveformData.push({
+                            x: i,
+                            y: dataArray[i] / 128.0
+                        });
+                    }
+                    
+                    waveformChart.data.datasets[0].data = waveformData;
+                    waveformChart.update();
+                }
+                
+                visualizeWaveform();
+                
+                mediaRecorder.ondataavailable = (event) => {
+                    audioChunks.push(event.data);
+                };
+                
+                mediaRecorder.onstop = async () => {
+                    cancelAnimationFrame(animationId);
+                    statusIndicator.textContent = "Analyzing...";
+                    statusIndicator.className = "status analyzing";
+                    
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                    recordedAudio = URL.createObjectURL(audioBlob);
+                    playbackBtn.disabled = false;
+                    
+                    // Analyze the audio
+                    await analyzeAudio(audioBlob);
+                    
+                    statusIndicator.textContent = "Ready";
+                    statusIndicator.className = "status";
+                    recordBtn.style.display = "block";
+                    stopBtn.style.display = "none";
+                };
+                
+                mediaRecorder.start();
+            } catch (error) {
+                console.error("Error starting recording:", error);
+                showMessage("Error accessing microphone. Please ensure you've granted microphone permissions.");
+                resetUI();
+            }
+        });
+
+        // Stop recording
+        stopBtn.addEventListener('click', () => {
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+                audioStream.getTracks().forEach(track => track.stop());
+            }
+        });
+
+        // Play recorded audio
+        playbackBtn.addEventListener('click', () => {
+            if (recordedAudio) {
+                const audio = new Audio(recordedAudio);
+                audio.play();
+            }
+        });
+
+        // Upload audio file
+        uploadBtn.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            // Check file type
+            const validTypes = ['audio/wav', 'audio/mpeg', 'audio/ogg'];
+            if (!validTypes.includes(file.type)) {
+                showMessage("Please upload a valid audio file (WAV, MP3, or OGG)");
+                return;
+            }
+            
+            statusIndicator.textContent = "Analyzing...";
+            statusIndicator.className = "status analyzing";
+            
+            try {
+                // Visualize the uploaded audio
+                await visualizeUploadedAudio(file);
+                
+                // Analyze the audio
+                await analyzeAudio(file);
+                
+                statusIndicator.textContent = "Ready";
+                statusIndicator.className = "status";
+            } catch (error) {
+                console.error("Error processing file:", error);
+                showMessage("Error processing the audio file. Please try another file.");
+                statusIndicator.textContent = "Ready";
+                statusIndicator.className = "status";
+            }
+        });
+
+        // Visualize uploaded audio file
+        async function visualizeUploadedAudio(file) {
+            initAudioContext();
+            
+            const arrayBuffer = await file.arrayBuffer();
+            const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+            
+            // Create analyser
+            const analyser = audioContext.createAnalyser();
+            analyser.fftSize = 2048;
+            const bufferLength = analyser.frequencyBinCount;
+            const dataArray = new Uint8Array(bufferLength);
+            
+            // Create source
+            const source = audioContext.createBufferSource();
+            source.buffer = audioBuffer;
+            source.connect(analyser);
+            analyser.connect(audioContext.destination);
+            
+            // Update waveform visualization
+            waveformData = [];
+            analyser.getByteTimeDomainData(dataArray);
+            
+            for (let i = 0; i < bufferLength; i++) {
+                waveformData.push({
+                    x: i,
+                    y: dataArray[i] / 128.0
+                });
+            }
+            
+            waveformChart.data.datasets[0].data = waveformData;
+            waveformChart.update();
+            
+            // Store for playback
+            recordedAudio = URL.createObjectURL(file);
+            playbackBtn.disabled = false;
+        }
+
+        // Analyze audio (send to server)
+        async function analyzeAudio(audioData) {
+            try {
+                const formData = new FormData();
+                formData.append('file', audioData, 'recording.wav');
+                
+                const response = await axios.post('/predict', formData, {
+                    headers: {
+                        'Content-Type': 'multipart/form-data'
+                    }
+                });
+                
+                if (response.data.emotion) {
+                    updateResults(response.data.emotion, response.data.confidence);
+                    addToHistory(response.data.emotion, response.data.confidence);
+                } else {
+                    throw new Error("Invalid response from server");
+                }
+            } catch (error) {
+                console.error("Error analyzing audio:", error);
+                showMessage("Error analyzing the audio. Please try again.");
+            }
+        }
+
+        // Update UI with results
+        function updateResults(emotion, confidence) {
+            emotionResult.textContent = emotion;
+            
+            // Update chart data
+            emotionChart.data.datasets[0].data = [
+                confidence.ANG || 0,
+                confidence.DIS || 0,
+                confidence.FEA || 0,
+                confidence.HAP || 0,
+                confidence.NEU || 0,
+                confidence.SAD || 0
+            ];
+            emotionChart.update();
+        }
+
+        // Add analysis to history
+        function addToHistory(emotion, confidence) {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString();
+            
+            // Extract emotion type and emoji
+            const emotionParts = emotion.split(' ');
+            const emotionType = emotionParts[1] || emotionParts[0];
+            const emotionEmoji = emotionParts[0];
+            
+            const listItem = document.createElement('li');
+            listItem.className = 'history-item';
+            
+            const emotionClass = emotionType.toLowerCase();
+            
+            listItem.innerHTML = `
+                <div>
+                    <span>${timeString}</span>
+                    <span class="emotion-tag ${emotionClass}">${emotionEmoji} ${emotionType}</span>
+                </div>
+                <div>${confidence[emotionType.substring(0, 3)] || 'N/A'}</div>
+            `;
+            
+            historyList.insertBefore(listItem, historyList.firstChild);
+            
+            // Limit history to 10 items
+            if (historyList.children.length > 10) {
+                historyList.removeChild(historyList.lastChild);
+            }
+        }
+
+        // Reset UI elements
+        function resetUI() {
+            statusIndicator.textContent = "Ready";
+            statusIndicator.className = "status";
+            recordBtn.style.display = "block";
+            stopBtn.style.display = "none";
+            playbackBtn.disabled = true;
+        }
+
+        // Initialize
+        resetUI();
+    </script>
+</body>
+</html>
